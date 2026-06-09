@@ -26,3 +26,4 @@ f1 = list(e)
 f1.remove("cat")
 f = tuple(f1)
 print(f)
+
