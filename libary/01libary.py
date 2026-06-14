@@ -65,6 +65,16 @@ def search_book(books):
    query=input("enter the book id :").strip().upper()
 
    found_book=[book for book in books if query in book["book_title"].upper() or query in book["book_author"] ]
+  
+
+   if found_book:
+        print(f"\nFound {len(found_book)} result(s):")
+        for book in found_book:
+            status = "Issued" if book['is_issued'] else "Available"
+            print(f"ID: {book['book_id']} | Title: {book['title']} | Author: {book['author']} | Status: {status}")
+   else:
+        print("No books found matching your search.")
+search_book()
 
 
 
