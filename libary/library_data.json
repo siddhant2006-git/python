@@ -1,0 +1,10 @@
+[
+    {
+        "book_id": "100",
+        "title": "Apc Maths",
+        "author": "Krish",
+        "is_issued": true,
+        "issued_to": "Siddhant",
+        "issue_date": "2026-06-14"
+    }
+]
