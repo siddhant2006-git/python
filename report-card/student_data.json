@@ -1,0 +1,26 @@
+[
+    {
+        "name": "siddhant",
+        "roll_no": "11",
+        "marks": {
+            "english": 87,
+            "hindi": 22,
+            "math": 36,
+            "science": 98
+        },
+        "percentage": 60.75,
+        "grade": "D"
+    },
+    {
+        "name": "kartikey",
+        "roll_no": "22",
+        "marks": {
+            "english": 87,
+            "hindi": 98,
+            "math": 8,
+            "science": 67
+        },
+        "percentage": 65.0,
+        "grade": "D"
+    }
+]
