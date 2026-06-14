@@ -1,0 +1,18 @@
+[
+    {
+        "book_id": "11",
+        "book_title": "krishna",
+        "book_author": "sidd",
+        "is_issued": false,
+        "issued_to": null,
+        "issue_date": null
+    },
+    {
+        "book_id": "1000",
+        "book_title": "title",
+        "book_author": "qqew",
+        "is_issued": false,
+        "issued_to": null,
+        "issue_date": null
+    }
+]
