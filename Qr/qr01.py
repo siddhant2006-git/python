@@ -22,3 +22,5 @@ img = qr.make_image(fill_color="black", back_color="red")
 img.save("mera_qr.png")
 
 print("QR Code safalta se 'mera_qr.png' ke naam se save ho gaya!")
+
+
