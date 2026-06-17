@@ -48,6 +48,13 @@ class repository:
             if not full_path.exists():
                 raise FileNotFoundError(f"Path {path} is not found ")
             
+            if full_path.is_file():
+                self.add_file(path)
+            elif full_path.is_dir():
+                self.add_dir(path)
+            else:
+                raise ValueError(f"{path} is found in file and folder ")
+            
 
 
 def main():
