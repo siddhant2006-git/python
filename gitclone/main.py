@@ -1,7 +1,42 @@
+# global class can access to easyly for help of current location can be access .
+from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
 import json
+import hashlib
+import zlib
+
+class Gitobject:
+    def __init__(self,obj_type:str,content:bytes):
+        self.type=obj_type
+        self.content=content
+
+    # hash libary - to check the file can be change or not .
+    # encode - to convert string to byte .
+    # hexdigest - hash object can be read it and convert into hexdecimal
+    def hash(self) -> str :
+        header=f"{self.type} {len(self.content)}\0".encode()
+        return hashlib.shai(header +self.content).hexdigest()
+
+    # zlib - it is python build libary which are used to compress and decompress of the data
+    # compress - large data convert into small data .
+    # decompress - small data convert into orginal data
+    def serialize(self) -> bytes:
+        header = f"{self.type} {len(self.content)}\0".encode()
+        return zlib.compress(header +self.content)
+
+    def deserialize(cls,data:bytes) -> Gitobject:
+        decompress=zlib.decompress(data)
+        null_id=decompress.find(b"\0")
+        header=decompress[:null_id]
+        content=decompress[null_id +1]
+
+        obj_type ,_ =header.split(" ")
+
+        return cls(obj_type,content)
+    
+
 
 
 # resolve() path ko absolute path me convert karta hai
@@ -42,19 +77,29 @@ class repository:
 
         print(f"Initialized empty pygit repository in {self.git_dir}")
 
+        def add_file(self ,path:str):
+            full_path=self.path /path
+            if not full_path.exists():
+                raise FileNotFoundError(f"Path {path} is not found ")
+
+                # read the file content
+                content=full_path.read_byte()
+                # create blob object from content .
+                # store the blob object in database (.git/objects) .
+                pass
+
         def add_path(self,path:str) ->None:
             full_path = self.path /path
 
             if not full_path.exists():
                 raise FileNotFoundError(f"Path {path} is not found ")
-            
+
             if full_path.is_file():
                 self.add_file(path)
             elif full_path.is_dir():
                 self.add_dir(path)
             else:
                 raise ValueError(f"{path} is found in file and folder ")
-            
 
 
 def main():
