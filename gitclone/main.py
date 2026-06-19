@@ -31,12 +31,13 @@ class Gitobject:
         decompress=zlib.decompress(data)
         null_id=decompress.find(b"\0")
         header=decompress[:null_id]
-        content=decompress[null_id +1]
+        content=decompress[null_id +1:]
 
-        obj_type ,_ =header.split(b" ")
+        obj_type ,_ =header.split(b" ",1)
 
-        return cls(obj_type,content)
-    
+
+        return cls(obj_type.decode(),content)
+
 class Blob(Gitobject):
     
     def __init__(self, content:bytes):
@@ -44,17 +45,6 @@ class Blob(Gitobject):
 
     def get_container(self) ->bytes:
           return   self.content
-
-
-    
-    
-    
-    
-    
-        
-        
-    
-
 
 
 # resolve() path ko absolute path me convert karta hai
@@ -97,81 +87,77 @@ class repository:
 
         print(f"Initialized empty pygit repository in {self.git_dir}")
         return True
-    
 
     def load_index(self) ->dict[str,str]:
         if not self.index_file.exists():
             return {}
-        
 
         try:
             return json.loads(self.index_file.read_text())
         except:
             return {}
-        
+
     def store_object(self,obj:Gitobject):
         obj_hash=obj.hash()
-        object_dir=object_dir /obj_hash[:2]
+        object_dir=self.object_dir /obj_hash[:2]
         object_file=object_dir /obj_hash[2:]
 
         if not object_file.exists():
             object_dir.mkdir(exist_ok=True)
             object_file.write_bytes(obj.serialize())
 
-
-            return obj_hash
-
-            
-            
+        return obj_hash
 
     def save_index(self,index:dict[str,str]):
         self.index_file.write_text(json.dumps(index,indent=2))
 
-
-        
-
     def add_file(self ,path:str):
-            full_path=self.path /path
-            if not full_path.exists():
-                raise FileNotFoundError(f"Path {path} is not found ")
+        full_path=self.path /path
 
-                # read the file content
-                content=full_path.read_bytes()
+        if not full_path.exists():
+            raise FileNotFoundError(f"Path {path} is not found ")
 
-                # create blob object from content .
-                blob=Blob(content)
+            # read the file content
+        content=full_path.read_bytes()
 
-                # store the blob object in database    (.git/objects) .
-                blob_hash=self.store_object(blob)
+        # create blob object from content .
+        blob=Blob(content)
 
-                index=self.load_index()
-                index[path]=blob_hash
-                self.save_index(index)
+        # store the blob object in database    (.git/objects) .
+        blob_hash=self.store_object(blob)
 
+        index=self.load_index()
+        index[path]=blob_hash
+        self.save_index(index)
+        pass
 
+        print(f"Added {path}")
 
-                pass
-            
-            print(f"Added {path}")
-
-    def add_director(self):
-            pass
+    def add_dir(self, path: str):
         
-            
+     full_path = self.path / path
 
+     for file_path in full_path.rglob("*"):
+
+        if self.git_dir in file_path.parents:
+            continue
+
+        if file_path.is_file():
+            rel_path = file_path.relative_to(self.path).as_posix()
+            self.add_file(rel_path)
 
     def add_path(self,path:str) ->None:
-            full_path = self.path /path
+        full_path = self.path /path
 
-            if not full_path.exists():
-                raise FileNotFoundError(f"Path {path} is not found ")
+        if not full_path.exists():
+            raise FileNotFoundError(f"Path {path} is not found ")
 
-            if full_path.is_file():
-                self.add_file(path)
-            elif full_path.is_dir():
-                self.add_dir(path)
-            else:
-                raise ValueError(f"{path} is found in file and folder ")
+        if full_path.is_file():
+            self.add_file(path)
+        elif full_path.is_dir():
+            self.add_dir(path)
+        else:
+            raise ValueError(f"{path} is found in file and folder ")
 
 
 def main():
