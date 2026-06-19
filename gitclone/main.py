@@ -17,7 +17,7 @@ class Gitobject:
     # hexdigest - hash object can be read it and convert into hexdecimal
     def hash(self) -> str :
         header=f"{self.type} {len(self.content)}\0".encode()
-        return hashlib.shai(header +self.content).hexdigest()
+        return hashlib.sha1(header +self.content).hexdigest()
 
     # zlib - it is python build libary which are used to compress and decompress of the data
     # compress - large data convert into small data .
@@ -25,6 +25,7 @@ class Gitobject:
     def serialize(self) -> bytes:
         header = f"{self.type} {len(self.content)}\0".encode()
         return zlib.compress(header +self.content)
+    @classmethod
 
     def deserialize(cls,data:bytes) -> Gitobject:
         decompress=zlib.decompress(data)
@@ -32,9 +33,26 @@ class Gitobject:
         header=decompress[:null_id]
         content=decompress[null_id +1]
 
-        obj_type ,_ =header.split(" ")
+        obj_type ,_ =header.split(b" ")
 
         return cls(obj_type,content)
+    
+class Blob(Gitobject):
+    
+    def __init__(self, content:bytes):
+        super().__init__("blob", content)
+
+    def get_container(self) ->bytes:
+          return   self.content
+
+
+    
+    
+    
+    
+    
+        
+        
     
 
 
@@ -70,25 +88,79 @@ class repository:
         # HEAD file create and write
         self.head_file.write_text("ref: refs/heads/master\n")
 
+        self.save_index({})
+
         # dump-Json data can be  direct written in file .
         # dumps- Json data can convert into string form .
         # index file create
         self.index_file.write_text(json.dumps({}, indent=4))
 
         print(f"Initialized empty pygit repository in {self.git_dir}")
+        return True
+    
 
-        def add_file(self ,path:str):
+    def load_index(self) ->dict[str,str]:
+        if not self.index_file.exists():
+            return {}
+        
+
+        try:
+            return json.loads(self.index_file.read_text())
+        except:
+            return {}
+        
+    def store_object(self,obj:Gitobject):
+        obj_hash=obj.hash()
+        object_dir=object_dir /obj_hash[:2]
+        object_file=object_dir /obj_hash[2:]
+
+        if not object_file.exists():
+            object_dir.mkdir(exist_ok=True)
+            object_file.write_bytes(obj.serialize())
+
+
+            return obj_hash
+
+            
+            
+
+    def save_index(self,index:dict[str,str]):
+        self.index_file.write_text(json.dumps(index,indent=2))
+
+
+        
+
+    def add_file(self ,path:str):
             full_path=self.path /path
             if not full_path.exists():
                 raise FileNotFoundError(f"Path {path} is not found ")
 
                 # read the file content
-                content=full_path.read_byte()
-                # create blob object from content .
-                # store the blob object in database (.git/objects) .
-                pass
+                content=full_path.read_bytes()
 
-        def add_path(self,path:str) ->None:
+                # create blob object from content .
+                blob=Blob(content)
+
+                # store the blob object in database    (.git/objects) .
+                blob_hash=self.store_object(blob)
+
+                index=self.load_index()
+                index[path]=blob_hash
+                self.save_index(index)
+
+
+
+                pass
+            
+            print(f"Added {path}")
+
+    def add_director(self):
+            pass
+        
+            
+
+
+    def add_path(self,path:str) ->None:
             full_path = self.path /path
 
             if not full_path.exists():
@@ -131,8 +203,8 @@ def main():
                 print("not repositor can be present ")
                 return
 
-            for path in args.paths:
-                repo.add_path()
+            for path in args.path:
+                repo.add_path(path)
             
 
     except Exception as e:
