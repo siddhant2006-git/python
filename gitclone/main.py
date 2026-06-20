@@ -27,6 +27,7 @@ class Gitobject:
         return zlib.compress(header +self.content)
     @classmethod
 
+# decode - it is mainly used to convert the data encode in proper format for readbility .
     def deserialize(cls,data:bytes) -> Gitobject:
         decompress=zlib.decompress(data)
         null_id=decompress.find(b"\0")
@@ -39,7 +40,8 @@ class Gitobject:
         return cls(obj_type.decode(),content)
 
 class Blob(Gitobject):
-    
+    # super()- it is python built function which are used to allow the proxy object to call themselves .
+
     def __init__(self, content:bytes):
         super().__init__("blob", content)
 
@@ -141,7 +143,7 @@ class repository:
 
         if self.git_dir in file_path.parents:
             continue
-
+#as_posix- it is used to create the folder in subfolder to exists now . (folder-subfolder).
         if file_path.is_file():
             rel_path = file_path.relative_to(self.path).as_posix()
             self.add_file(rel_path)
@@ -158,6 +160,13 @@ class repository:
             self.add_dir(path)
         else:
             raise ValueError(f"{path} is found in file and folder ")
+        
+        
+    def commit(path,message:str,author:str =" PyGituser <user@pygit.com>"):
+        pass 
+    
+        
+        
 
 
 def main():
@@ -170,6 +179,14 @@ def main():
     # add command - to add file and store in staging to them.
     add_parse = subparse.add_parser("add", help="Add the file and directory to staging")
     add_parse.add_argument("path", nargs="+", help="Files or directories to add")
+
+    # commit commands .
+    commit_parser=subparse.add_parser("commit" ,help="commit your message ")
+    commit_parser.add_argument("-m","message", help="commit message",required=True)
+    commit_parser.add_argument(
+        "author",
+        help="author name and email"
+    )
 
     args = parser.parse_args()
 
@@ -191,6 +208,13 @@ def main():
 
             for path in args.path:
                 repo.add_path(path)
+
+        elif args.command=="commit":
+            if not repo.git_dir.exists():
+                print("not  a git repositor  ")
+                return
+            author=args.author or "pygit user <user@pygit.com>"
+            repo.commit(args.message,author)
             
 
     except Exception as e:
