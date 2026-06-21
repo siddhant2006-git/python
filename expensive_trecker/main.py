@@ -1,5 +1,5 @@
 import json 
-import math
+import math 
 
 
 CATEGORIES=("food","game","entertainment","bills","other")
