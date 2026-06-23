@@ -35,6 +35,7 @@ class Gitobject:
         content=decompress[null_id +1:]
 
         obj_type ,_ =header.split(b" ",1)
+        # hello
 
 
         return cls(obj_type.decode(),content)
@@ -48,6 +49,22 @@ class Blob(Gitobject):
     def get_container(self) ->bytes:
           return   self.content
 
+class tree(Gitobject):
+    def __init__(self, entries: list[tuple[str,str,str]]):
+        content=self._serialize_entries()
+        self.entries=entries
+        super().__init__("tree" , entries)
+
+    def _serialize_entries(self)->bytes:
+        content=b""
+        for name ,mode ,obj_hash in sorted(self.entries):
+            content +=f"{mode} {name}\0".encode()
+            content +=bytes.fromhex(obj_hash)
+
+            return content 
+        
+        def add_entries(self,mode:str,name:str,obj_hash:str):
+            self.entries.append((mode ,name ,obj_hash))
 
 # resolve() path ko absolute path me convert karta hai
 # absolute path means full path from root folder
@@ -78,7 +95,7 @@ class repository:
         self.ref_dir.mkdir(exist_ok=True)
 
         # HEAD file create and write
-        self.head_file.write_text("ref: refs/heads/master\n")
+        self.head_file.write_text("ref: refs/heads/main\n")
 
         self.save_index({})
 
@@ -161,12 +178,23 @@ class repository:
         else:
             raise ValueError(f"{path} is found in file and folder ")
         
+
+    def create_tree_from_index(self):
+        index=self.load_index()
+
+        if not index :
+          #  tree=Tree()
+            return self.create_tree_from_index
         
-    def commit(path,message:str,author:str =" PyGituser <user@pygit.com>"):
-        pass 
-    
+
+            
         
+            
         
+    def commit(self ,path,message:str,author:str =" PyGituser <user@pygit.com>"):
+     
+        
+     hash_tree=self.create_tree_from_index()
 
 
 def main():
@@ -182,7 +210,7 @@ def main():
 
     # commit commands .
     commit_parser=subparse.add_parser("commit" ,help="commit your message ")
-    commit_parser.add_argument("-m","message", help="commit message",required=True)
+    commit_parser.add_argument("-m","--message", help="commit message",required=True)
     commit_parser.add_argument(
         "author",
         help="author name and email"
