@@ -1,91 +1,115 @@
-# pygit Clone Project
+# PyGit (simple git-like toy)
 
-## Project Overview
+This small project is an educational implementation of the core ideas behind `git`, written in Python. It is intended as a toy repository manager that demonstrates how Git-style object storage, indexing, and simple command handling works.
 
-This project implements a small Python-based Git-like repository manager called `pygit`.
-It supports initializing a new repository and adding files or directories to a simple object database stored under `.pygit`.
+## Project overview
 
-## Features
+- **Purpose:** learn how Git stores objects and tracks files by implementing a minimal version of `git init`, `git add`, and `git commit`.
+- **Language:** Python 3.9+
+- **Main file:** `main.py`
+- **Repository folder:** `gitclone`
 
-- Initialize a new repository structure with `.pygit`, `.pygit/objects`, and `.pygit/refs`
-- Create a HEAD file that points to the default branch `refs/heads/master`
-- Save a repository index in JSON format for staging files
-- Add individual files or all files inside a directory to staging
-- Compute SHA-1 hashes for stored objects, matching Git-style hashing behavior
-- Compress object data with `zlib` and store it in a content-addressed object database
+## What this project implements
 
-## How It Works
+- A `.pygit` repository directory with basic metadata files.
+- SHA-1 based object hashing for file data and tree structures.
+- A simple index file that maps working tree paths to object hashes.
+- File and directory staging support via `add`.
+- A command-line interface with subcommands.
 
-1. `init`: Creates the `.pygit` directory structure and writes metadata files.
-2. `add`: Reads file bytes, creates a `Blob` object, serializes and compresses the content, and stores it under `.pygit/objects`.
-3. The index file keeps a mapping from file path to object hash for staged content.
+## Files and structure
 
-## Command Usage
+- `gitclone/main.py`
+  - Full implementation of the toy Git engine.
+  - Contains the core classes `Gitobject`, `Blob`, `Tree`, and `repository`.
+- `gitclone/README.md`
+  - Project documentation and usage notes.
+- `.pygit/`
+  - Local repository metadata created by `python main.py init`.
 
-- `python main.py init`
-  - Initializes a new `pygit` repository in the current folder.
-- `python main.py add <path>...`
-  - Adds one or more files or directories to the repository staging index.
-  - Example: `python main.py add README.md src/`
+## Key concepts in the code
 
-## Code Structure
+### Gitobject
 
-- `Gitobject` class
-  - Represents a generic Git object with `type` and `content`.
-  - Methods:
-    - `hash()`: Computes the SHA-1 hash of the object header and content.
-    - `serialize()`: Compresses object data using `zlib`.
-    - `deserialize()`: Decompresses serialized data and recreates the object instance.
-- `Blob` class
-  - Subclass of `Gitobject` for storing raw file contents.
-  - Automatically sets object type to `blob`.
-- `repository` class
-  - Manages repository paths and storage behavior.
-  - Methods:
-    - `init()`: Creates repository folders and index files.
-    - `load_index()`: Loads the staging index from `.pygit/index`.
-    - `store_object()`: Saves serialized objects into `.pygit/objects`.
-    - `save_index()`: Writes the index JSON file.
-    - `add_file()`: Adds a single file to the index.
-    - `add_dir()`: Recursively adds files from a directory.
-    - `add_path()`: Adds either a file or directory path.
-- `main()` function
-  - Parses command-line arguments via `argparse`.
-  - Dispatches `init` and `add` commands.
+`Gitobject` is the base class for every stored object. It provides:
 
-## Libraries Used
+- `hash()`: computes the object SHA-1 based on the Git header format `"{type} {len(content)}\0" + content`.
+- `serialize()`: compresses the object bytes with `zlib` for storage.
+- `deserialize()`: decompresses bytes, splits the header and body, then returns a new `Gitobject`.
 
-- `argparse`
-  - Used to parse command-line arguments and options.
-- `sys`
-  - Used to exit the program with an error status on exception.
-- `pathlib.Path`
-  - Used for file and directory path handling in a cross-platform way.
-- `json`
-  - Used for reading and writing the staging index in JSON format.
-- `hashlib`
-  - Used to compute a SHA-1 hash for object identity.
-- `zlib`
-  - Used to compress and decompress object content.
+### Blob
 
-## Important Parameters and Keywords
+`Blob` is a simple subclass of `Gitobject` for file data. It stores raw file bytes and can be written to the object database.
 
-- `path`: The file or directory path provided to the `add` command.
-- `.pygit`: The hidden repository storage folder, analogous to Git's `.git` folder.
-- `HEAD`: A file that points to the current branch reference.
-- `refs/heads/master`: The default branch reference path stored in `HEAD`.
-- `objects`: The folder where object files are stored using the first two characters of their SHA-1 hash as a directory.
-- `index`: A JSON file that tracks staged files mapped to object hashes.
+### Tree
 
-## Special Notes
+`Tree` is designed to represent directory contents. Each entry is stored as a tuple of:
 
-- The repository only supports basic object storage and staging; it does not implement commits, branches, or history traversal.
-- When adding directories, `add_dir()` skips files inside the `.pygit` directory to avoid indexing repository internals.
-- The implementation uses the same object header format as Git: `<type> <size>\0<content>`.
+- `name` — file or directory name
+- `mode` — object mode string like `100644` for files or `40000` for directories
+- `obj_hash` — object hash of the child blob or subtree
 
-## Project Goals
+The tree serializes entries into the Git-style format: `mode name\0` followed by raw hash bytes.
 
-- Demonstrate fundamental Git internals in Python.
-- Provide a simple example of content-addressed storage.
-- Show using file hashing and compression for object persistence.
-- Keep the implementation readable and easy to extend.
+### Repository
+
+The `repository` class manages the working directory and repository metadata:
+
+- `init()`: creates `.pygit`, object and ref directories, `HEAD`, and an empty `index` file.
+- `load_index()`: reads `.pygit/index` and returns the tracked path->hash mapping.
+- `store_object()`: saves compressed object bytes under `.pygit/objects/<first2>/<rest>`.
+- `save_index()`: writes the index JSON file.
+- `add_file()`: stores a file as a blob and updates the index.
+- `add_dir()`: walks a directory recursively and stages every file under it.
+- `add_path()`: chooses between file and directory staging.
+- `create_tree_from_index()`: builds tree objects from the current index.
+- `commit()`: starts creating a commit from the current index.
+
+## How to use
+
+1. Install Python 3.9 or later.
+2. Open a terminal inside `python/gitclone`.
+3. Run commands:
+
+```bash
+python main.py init
+python main.py add README.md
+python main.py add folder_name
+python main.py commit -m "Initial commit" "Your Name <you@example.com>"
+```
+
+Use `python main.py` with no arguments to display the help text.
+
+## Example workflow
+
+```bash
+python main.py init
+python main.py add sample.txt
+python main.py add src/
+python main.py commit -m "Add project files" "Developer <dev@example.com>"
+```
+
+## Current limitations and next steps
+
+This project is a learning prototype, not a full Git implementation. Some current limitations include:
+
+- `commit()` is not yet fully implemented: it creates a tree object but does not currently write commit metadata or update refs.
+- Tree parsing and object deserialization are still under refinement.
+- The implementation assumes a simple file mode and does not support symbolic links, executable bits, or merge history.
+- Error handling is minimal and mostly focused on the happy path.
+
+## Notes for developers
+
+- The code lives entirely in `gitclone/main.py`.
+- The repository metadata is stored in `.pygit`, not `.git`.
+- The index file is JSON and can be viewed directly.
+- The object database uses SHA-1 hashes and zlib compression, similar to Git.
+
+## Want help improving this project?
+
+I can help with the following additional improvements:
+
+- finish `commit()` so it writes actual commit objects and updates `.pygit/HEAD`
+- make the tree logic fully recursive for nested directories
+- add tests for `init`, `add`, and `commit`
+- document the object storage format in more detail
