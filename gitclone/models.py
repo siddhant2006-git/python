@@ -43,7 +43,7 @@ class Blob(Gitobject):
         # super-to access the property of parent .
         super().__init__("blob", content)
 
-
+# tree - inheritace can use to access to parent from to child.
 class Tree(Gitobject):
     "represent from the repo.py file ."
 
