@@ -45,19 +45,27 @@ class repository:
         # Read the staging area data from the index file
         if not self.index_file.exists():
             return {}
+          
+#loads - json string convert to python object .
         try:
             return json.loads(self.index_file.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             return {}
 
+# dumps - return the json string (python object to convert json string )
+# dump - write the json string in file .
+# save function - it is used to save the index for the staging file .
     def save_index(self, index: dict[str, str]):
         # Write the staging area information back to the index file
         self.index_file.write_text(json.dumps(index, indent=2), encoding="utf-8")
 
+# hash libary - it can use generate the hash digits . 
     def store_object(self, obj: Gitobject) -> str:
         # Create a hash for the object and save it in the objects folder
         obj_hash = obj.hash()
+        # create a subdirectory using the first 2 character of hash 
         object_dir = self.object_dir / obj_hash[:2]
+        # create a file in subdirectory folder if the all rest hash value can insert those file .
         object_file = object_dir / obj_hash[2:]
         if not object_file.exists():
             object_dir.mkdir(exist_ok=True)
@@ -68,6 +76,8 @@ class repository:
         # Return the file path for a branch reference
         return self.heads_dir / branch
 
+# ls - read the index wise file .
+# strip - it remove the free space .
     def _read_ref(self, branch: str) -> str:
         # Read the commit hash stored for that branch
         ref_file = self._ref_path(branch)
@@ -75,10 +85,12 @@ class repository:
             return ""
         return ref_file.read_text(encoding="utf-8").strip()
 
+# show the index value of file display .
     def _write_ref(self, branch: str, value: str):
         # Write the commit hash for a branch
         self._ref_path(branch).write_text(value, encoding="utf-8")
 
+# startswith - it can check the prefix name of file can be exists or not (true , false)
     def get_current_branch(self) -> str:
         # Find the name of the current branch from the HEAD file
         if not self.head_file.exists():
@@ -97,6 +109,7 @@ class repository:
             return head[5:].strip()
         return ""
 
+#  blob - it can store file with index wise .
     def add_file(self, path: str):
         # Add a single file to the index by creating a blob object
         full_path = self.path / path
@@ -111,6 +124,8 @@ class repository:
         print(f"Added {path}")
         return blob_hash
 
+#rglob - it can find files and directory .
+# parent attribute - it can check the file can be exist in git folder or not .
     def add_dir(self, path: str):
         # Add every file inside a folder to the index
         full_path = self.path / path
