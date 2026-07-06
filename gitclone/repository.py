@@ -8,12 +8,12 @@ from models import (
     Blob,
     Gitobject,
     Tree,
-)  
+)
 
 
 class repository:
-    
-    def __init__(self, path: str ):
+
+    def __init__(self, path: str):
         # Store the repository root path and make it absolute
         self.path = Path(path).resolve() if path else Path.cwd().resolve()
 
@@ -45,25 +45,25 @@ class repository:
         # Read the staging area data from the index file
         if not self.index_file.exists():
             return {}
-          
-#loads - json string convert to python object .
+
+        # loads - json string convert to python object .
         try:
             return json.loads(self.index_file.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             return {}
 
-# dumps - return the json string (python object to convert json string )
-# dump - write the json string in file .
-# save function - it is used to save the index for the staging file .
+    # dumps - return the json string (python object to convert json string )
+    # dump - write the json string in file .
+    # save function - it is used to save the index for the staging file .
     def save_index(self, index: dict[str, str]):
         # Write the staging area information back to the index file
         self.index_file.write_text(json.dumps(index, indent=2), encoding="utf-8")
 
-# hash libary - it can use generate the hash digits . 
+    # hash libary - it can use generate the hash digits .
     def store_object(self, obj: Gitobject) -> str:
         # Create a hash for the object and save it in the objects folder
         obj_hash = obj.hash()
-        # create a subdirectory using the first 2 character of hash 
+        # create a subdirectory using the first 2 character of hash
         object_dir = self.object_dir / obj_hash[:2]
         # create a file in subdirectory folder if the all rest hash value can insert those file .
         object_file = object_dir / obj_hash[2:]
@@ -76,8 +76,8 @@ class repository:
         # Return the file path for a branch reference
         return self.heads_dir / branch
 
-# ls - read the index wise file .
-# strip - it remove the free space .
+    # ls - read the index wise file .
+    # strip - it remove the free space .
     def _read_ref(self, branch: str) -> str:
         # Read the commit hash stored for that branch
         ref_file = self._ref_path(branch)
@@ -85,12 +85,12 @@ class repository:
             return ""
         return ref_file.read_text(encoding="utf-8").strip()
 
-# show the index value of file display .
+    # show the index value of file display .
     def _write_ref(self, branch: str, value: str):
         # Write the commit hash for a branch
         self._ref_path(branch).write_text(value, encoding="utf-8")
 
-# startswith - it can check the prefix name of file can be exists or not (true , false)
+    # startswith - it can check the prefix name of file can be exists or not (true , false)
     def get_current_branch(self) -> str:
         # Find the name of the current branch from the HEAD file
         if not self.head_file.exists():
@@ -109,7 +109,7 @@ class repository:
             return head[5:].strip()
         return ""
 
-#  blob - it can store file with index wise .
+    #  blob - it can store file with index wise .
     def add_file(self, path: str):
         # Add a single file to the index by creating a blob object
         full_path = self.path / path
@@ -124,8 +124,8 @@ class repository:
         print(f"Added {path}")
         return blob_hash
 
-#rglob - it can find files and directory .
-# parent attribute - it can check the file can be exist in git folder or not .
+    # rglob - it can find files and directory .
+    # parent attribute - it can check the file can be exist in git folder or not .
     def add_dir(self, path: str):
         # Add every file inside a folder to the index
         full_path = self.path / path
@@ -185,6 +185,49 @@ class repository:
         if not object_file.exists():
             raise FileNotFoundError(f"Object {obj_hash} not found")
         return Gitobject.deserialize(object_file.read_bytes())
+
+    def _parse_commit(self, commit_hash: str) -> dict[str, object]:
+        # Read a commit object and return its parsed fields
+        commit = self.read_object(commit_hash)
+        if commit.type != "commit":
+            raise ValueError(f"Object {commit_hash} is not a commit")
+        content = commit.content.decode("utf-8")
+        header, _, message = content.partition("\n\n")
+        data: dict[str, object] = {
+            "tree": "",
+            "parents": [],
+            "author": "",
+            "committer": "",
+            "message": message,
+        }
+        for line in header.splitlines():
+            if line.startswith("tree "):
+                data["tree"] = line[5:]
+            elif line.startswith("parent "):
+                data["parents"].append(line[7:])
+            elif line.startswith("author "):
+                data["author"] = line[7:]
+            elif line.startswith("committer "):
+                data["committer"] = line[10:]
+        return data
+
+    def _collect_ancestor_commits(self, commit_hash: str) -> list[str]:
+        # Gather commits from the given commit back through its first-parent lineage
+        commits: list[str] = []
+        while commit_hash:
+            commits.append(commit_hash)
+            commit_data = self._parse_commit(commit_hash)
+            parents = commit_data["parents"]
+            commit_hash = parents[0] if parents else ""
+        return commits
+
+    def _find_common_ancestor(self, current_hash: str, target_hash: str) -> str:
+        # Find the nearest common ancestor between two commit histories
+        target_ancestors = set(self._collect_ancestor_commits(target_hash))
+        for commit_hash in self._collect_ancestor_commits(current_hash):
+            if commit_hash in target_ancestors:
+                return commit_hash
+        return ""
 
     def commit(self, message: str, author: str = "PyGituser <user@pygit.com>") -> str:
         # Create a commit object using the current tree and parent commit
@@ -258,6 +301,63 @@ class repository:
         self._write_ref(current_branch, target_commit)
         print(f"Merged branch '{branch_name}' into '{current_branch}'")
         return branch_name
+
+    def rebase(self, branch_name: str) -> str:
+        # Rebase the current branch on top of another branch
+        if not self._ref_path(branch_name).exists():
+            raise ValueError(f"branch '{branch_name}' does not exist")
+        current_branch = self.get_current_branch()
+        if current_branch == branch_name:
+            raise ValueError("cannot rebase a branch onto itself")
+
+        current_head = self.get_head_commit_hash()
+        target_head = self._read_ref(branch_name)
+        if current_head == target_head:
+            print(
+                f"Branch '{current_branch}' is already up to date with '{branch_name}'"
+            )
+            return current_branch
+
+        if not current_head:
+            self._write_ref(current_branch, target_head)
+            print(f"Rebased branch '{current_branch}' onto '{branch_name}'")
+            return current_branch
+
+        common_ancestor = self._find_common_ancestor(current_head, target_head)
+        if common_ancestor == current_head:
+            self._write_ref(current_branch, target_head)
+            print(f"Fast-forwarded branch '{current_branch}' to '{branch_name}'")
+            return current_branch
+
+        commits_to_replay: list[str] = []
+        commit_hash = current_head
+        while commit_hash and commit_hash != common_ancestor:
+            commits_to_replay.append(commit_hash)
+            commit_data = self._parse_commit(commit_hash)
+            parents = commit_data["parents"]
+            commit_hash = parents[0] if parents else ""
+        commits_to_replay.reverse()
+
+        if not commits_to_replay:
+            self._write_ref(current_branch, target_head)
+            print(f"Rebased branch '{current_branch}' onto '{branch_name}'")
+            return current_branch
+
+        new_parent = target_head
+        for old_commit in commits_to_replay:
+            commit_data = self._parse_commit(old_commit)
+            lines = [f"tree {commit_data['tree']}"]
+            if new_parent:
+                lines.append(f"parent {new_parent}")
+            lines.append(f"author {commit_data['author']}")
+            lines.append(f"committer {commit_data['committer']}")
+            lines.extend(["", commit_data["message"]])
+            new_commit = Gitobject("commit", "\n".join(lines).encode("utf-8"))
+            new_parent = self.store_object(new_commit)
+
+        self._write_ref(current_branch, new_parent)
+        print(f"Rebased branch '{current_branch}' onto '{branch_name}'")
+        return current_branch
 
     def push_branch(
         self, remote: str, branch: str | None = None, delete: bool = False

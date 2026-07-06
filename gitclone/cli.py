@@ -56,6 +56,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     merge_parser.add_argument("branch", help="Branch name")
 
+    # rebase command: rebase the current branch onto another branch
+    rebase_parser = subparse.add_parser(
+        "rebase", help="Rebase the current branch onto another branch"
+    )
+    rebase_parser.add_argument("branch", help="Branch to rebase onto")
+
     # push command: show remote push/delete behavior
     push_parser = subparse.add_parser(
         "push", help="Push or delete a branch on a remote"
@@ -129,6 +135,11 @@ def main() -> None:
                 print("not a git repository")
                 return
             repo.merge(args.branch)
+        elif args.command == "rebase":
+            if not repo.git_dir.exists():
+                print("not a git repository")
+                return
+            repo.rebase(args.branch)
         elif args.command == "push":
             if not repo.git_dir.exists():
                 print("not a git repository")
