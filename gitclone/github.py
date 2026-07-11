@@ -19,7 +19,7 @@ def status() -> None:
 
 
 def push(remote: str = "origin", branch: str = "main") -> None:
-    subprocess.run(["git", "push", "origin", branch,...], check=True)
+    subprocess.run(["git", "push", "origin", "main"], check=True)
 
 
 def pull(remote: str = "origin", branch: str = "main") -> None:
