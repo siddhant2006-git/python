@@ -2,6 +2,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -58,6 +59,42 @@ class BranchWorkflowTests(unittest.TestCase):
             self.assertEqual(result, "feature")
             self.assertEqual(repo.get_current_branch(), "feature")
             self.assertNotEqual(repo.get_head_commit_hash(), repo._read_ref("main"))
+
+    def test_rename_current_branch(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = repository(temp_dir)
+            repo.init()
+            repo.branch("feature")
+
+            result = repo.rename_branch("main", force=True)
+
+            self.assertEqual(result, "main")
+            self.assertEqual(repo.get_current_branch(), "main")
+            self.assertTrue(
+                (Path(temp_dir, ".pygit", "refs", "heads", "main")).exists()
+            )
+
+    def test_add_remote(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = repository(temp_dir)
+            repo.init()
+
+            result = repo.add_remote("origin", "https://github.com")
+
+            self.assertEqual(result, "origin")
+            self.assertEqual(repo.get_remote("origin"), "https://github.com")
+
+    def test_push_uses_upstream_flag_when_requested(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = repository(temp_dir)
+            repo.init()
+
+            with patch("subprocess.run") as mock_run:
+                repo.push_branch("origin", "main", set_upstream=True)
+
+            self.assertEqual(
+                mock_run.call_args.args[0], ["git", "push", "-u", "origin", "main"]
+            )
 
 
 if __name__ == "__main__":

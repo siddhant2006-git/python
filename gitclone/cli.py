@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse  # Used to read(handel) commands from the CLI.
 import sys  # Used to exit the program with an error code.
-from github import push
 
 try:
     from .repository import (
@@ -42,6 +41,20 @@ def build_parser() -> argparse.ArgumentParser:
     branch_parser.add_argument(
         "-d", "--delete", action="store_true", help="Delete a local branch"
     )
+    branch_parser.add_argument(
+        "-m",
+        "--move",
+        dest="new_name",
+        nargs=1,
+        help="Rename the current branch to a new name",
+    )
+    branch_parser.add_argument(
+        "-M",
+        "--force-move",
+        dest="force_new_name",
+        nargs=1,
+        help="Force rename the current branch to a new name",
+    )
     branch_parser.add_argument("name", nargs="?", help="Branch name")
 
     # checkout command: switch branches or create a new one
@@ -70,8 +83,26 @@ def build_parser() -> argparse.ArgumentParser:
     push_parser.add_argument("remote", help="Remote name")
     push_parser.add_argument("branch", nargs="?", help="Branch name")
     push_parser.add_argument(
+        "-u",
+        "--set-upstream",
+        action="store_true",
+        help="Set the upstream branch for the push",
+    )
+    push_parser.add_argument(
         "--delete", action="store_true", help="Delete the branch from the remote"
     )
+
+    # rename-branch command: rename the current branch
+    rename_parser = subparse.add_parser(
+        "rename-branch", help="Rename the current branch"
+    )
+    rename_parser.add_argument("new_name", help="New branch name")
+
+    # remote add command: save a remote name and URL
+    remote_parser = subparse.add_parser("remote", help="Configure a remote")
+    remote_parser.add_argument("subcommand", choices=["add"], help="Remote action")
+    remote_parser.add_argument("name", nargs="?", help="Remote name")
+    remote_parser.add_argument("url", nargs="?", help="Remote URL")
 
     return parser
 
@@ -117,6 +148,10 @@ def main() -> None:
                 if not args.name:
                     raise ValueError("branch name is required")
                 repo.delete_branch(args.name)
+            elif args.force_new_name:
+                repo.rename_branch(args.force_new_name[0], force=True)
+            elif args.new_name:
+                repo.rename_branch(args.new_name[0])
             elif args.name:
                 repo.branch(args.name)
             else:
@@ -145,7 +180,25 @@ def main() -> None:
             if not repo.git_dir.exists():
                 print("not a git repository")
                 return
-            repo.push_branch(args.remote, args.branch, delete=args.delete)
+            repo.push_branch(
+                args.remote,
+                args.branch,
+                delete=args.delete,
+                set_upstream=args.set_upstream,
+            )
+        elif args.command == "rename-branch":
+            if not repo.git_dir.exists():
+                print("not a git repository")
+                return
+            repo.rename_branch(args.new_name)
+        elif args.command == "remote":
+            if not repo.git_dir.exists():
+                print("not a git repository")
+                return
+            if args.subcommand == "add":
+                if not args.name or not args.url:
+                    raise ValueError("remote name and url are required")
+                repo.add_remote(args.name, args.url)
     except Exception as exc:
         # Show the user a simple error message if something fails
         print(f"error: {exc}")

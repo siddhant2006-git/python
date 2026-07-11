@@ -9,7 +9,7 @@ description = "A Git clone written in Python"
 requires-python = ">=3.9"
 
 [project.scripts]
-pygit = "cli:main"
+pygit = "gitclone.cli:main"
 
 [tool.setuptools]
-py-modules = ["cli", "repository", "models", "main"]
+packages = ["gitclone"]

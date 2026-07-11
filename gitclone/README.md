@@ -2,6 +2,16 @@
 
 This project is a small Python version of Git. It helps you understand how Git-like commands work internally.
 
+## Current problem / limitation
+
+This project is a learning version of Git, not a full Git implementation. Some important limitations still exist:
+
+- `push` is only a simplified behavior and depends on a working system Git installation.
+- `merge` and `rebase` are simplified implementations and do not handle real merge conflicts.
+- The project stores data locally in `.pygit`, so it does not provide real remote collaboration or full Git compatibility.
+
+This means the project is useful for understanding the basic idea of Git commands, but it cannot fully replace real Git.
+
 ## 1. `pygit init`
 
 This command creates a new empty repository.
@@ -108,6 +118,15 @@ This moves the current branch changes on top of another branch.
 ### `pygit push --delete old-branch`
 
 This deletes a branch from the remote.
+
+### Additional Git commands
+
+```bash
+git remote add origin "https://github.com"
+git branch -M main
+```
+
+These commands are commonly used to connect a local repository to a remote and rename the current branch to `main`.
 
 ## 5. How data is stored in this project
 

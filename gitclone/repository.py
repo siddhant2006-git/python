@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json  # Used to save and read index data as JSON
+import subprocess  # Used to run Git commands for push operations
 import time  # Used to create timestamps for commits
 from pathlib import Path  # Used for handling files and folders on disk
 
@@ -286,6 +287,61 @@ class repository:
         print(f"Deleted branch '{name}'")
         return name
 
+    def rename_branch(self, new_name: str, force: bool = False) -> str:
+        # Rename the current branch to a new name
+        current_branch = self.get_current_branch()
+        if not current_branch:
+            raise ValueError("no current branch to rename")
+        if current_branch == new_name:
+            return current_branch
+        old_ref = self._ref_path(current_branch)
+        new_ref = self._ref_path(new_name)
+        if new_ref.exists() and not force:
+            raise ValueError(f"branch '{new_name}' already exists")
+        if not old_ref.exists():
+            raise ValueError(f"branch '{current_branch}' does not exist")
+
+        if new_ref.exists() and force:
+            new_ref.unlink()
+
+        new_ref.write_text(old_ref.read_text(encoding="utf-8"), encoding="utf-8")
+        old_ref.unlink()
+        self.head_file.write_text(f"ref: refs/heads/{new_name}\n", encoding="utf-8")
+        print(f"Renamed branch '{current_branch}' to '{new_name}'")
+        return new_name
+
+    def add_remote(self, name: str, url: str) -> str:
+        # Store a remote name and URL in the repository config
+        if not name:
+            name = "origin"
+        remote_file = self.git_dir / "config"
+        remotes: dict[str, str] = {}
+        if remote_file.exists():
+            try:
+                data = json.loads(remote_file.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    remotes = data
+            except json.JSONDecodeError:
+                remotes = {}
+
+        remotes[name] = url
+        remote_file.write_text(json.dumps(remotes, indent=2), encoding="utf-8")
+        print(f"Added or updated remote '{name}' -> '{url}'")
+        return name
+
+    def get_remote(self, name: str) -> str:
+        # Read the configured URL for a remote name
+        remote_file = self.git_dir / "config"
+        if not remote_file.exists():
+            raise ValueError(f"remote '{name}' does not exist")
+        try:
+            data = json.loads(remote_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"remote '{name}' does not exist") from exc
+        if not isinstance(data, dict) or name not in data:
+            raise ValueError(f"remote '{name}' does not exist")
+        return data[name]
+
     def merge(self, branch_name: str) -> str:
         # Move the current branch pointer to the target branch commit
         if not self._ref_path(branch_name).exists():
@@ -360,16 +416,38 @@ class repository:
         return current_branch
 
     def push_branch(
-        self, remote: str, branch: str | None = None, delete: bool = False
+        self,
+        remote: str,
+        branch: str | None = None,
+        delete: bool = False,
+        set_upstream: bool = False,
     ) -> str:
-        # Simulate pushing or deleting a branch from a remote
-        if not branch:
-            raise ValueError("branch name is required")
-        if delete:
-            print(f"Deleted branch '{branch}' from remote '{remote}'")
+        # Push or delete a branch from a remote using the system Git client.
+        if delete and not branch:
+            raise ValueError("branch name is required for delete")
+
+        command = ["git", "push",...]
+        if set_upstream:
+            command.extend(["-u", remote])
         else:
-            print(f"Pushed branch '{branch}' to remote '{remote}'")
-        return branch
+            command.append(remote)
+
+        if delete:
+            command.extend(["--delete", branch])
+        elif branch:
+            command.append(branch)
+
+        try:
+            subprocess.run(command, check=True)
+        except subprocess.CalledProcessError as exc:
+            raise RuntimeError(f"git push failed: {exc}") from exc
+
+        pushed_branch = branch or self.get_current_branch()
+        if delete:
+            print(f"Deleted branch '{pushed_branch}' from remote '{remote}'")
+        else:
+            print(f"Pushed branch '{pushed_branch}' to remote '{remote}'")
+        return pushed_branch
 
     def list_branches(self) -> list[str]:
         # List all local branches stored in the refs/heads folder
