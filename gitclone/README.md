@@ -209,12 +209,65 @@ A large project stores data in the same way:
 - branches keep different versions of development
 - remotes store the shared copy of the project
 
-## 8. Summary
+## 8. Error handling and debugging
+
+PyGit now uses a dedicated error system so failures are reported clearly and consistently, similar to real Git.
+
+### Custom error types
+
+The project supports custom exceptions for:
+
+- `PyGitError` - base class for all PyGit-specific failures
+- `RepositoryError` - repository state issues such as missing `.pygit` data
+- `CommandError` - invalid command usage or invalid argument combinations
+- `FileError` - missing files, unreadable files, or permission problems
+- `BranchError` - invalid branch names or branch operations
+- `RemoteError` - invalid remote names or remote configuration problems
+
+### CLI error behavior
+
+When something goes wrong, PyGit shows user-friendly messages such as:
+
+```bash
+pygit error: not a pygit repository (run 'pygit init' first)
+```
+
+Examples of common errors include:
+
+- missing repository: `not a pygit repository (run 'pygit init' first)`
+- missing file: `file not found: example.txt`
+- missing branch name: `branch name is required`
+- invalid remote: `invalid remote name 'foo bar'`
+- permission issue: `permission denied: example.txt`
+
+### Debug mode
+
+Use `--debug` to see the full Python traceback for troubleshooting:
+
+```bash
+pygit --debug push origin main
+```
+
+Without `--debug`, only a clean error message is shown.
+
+### Validation rules
+
+PyGit now validates common problems before running commands:
+
+- missing files
+- missing branch names
+- invalid remote names
+- invalid repository state
+- permission failures
+- file not found errors
+
+## 9. Summary
 
 - `init` starts a repository
 - `add .` stages files
 - `commit` saves the staged state
 - `push` sends changes to a remote
 - data is stored using objects, index, refs, and HEAD
+- errors are handled clearly and can be debugged with `--debug`
 
 This project is made for learning, so it is simple and easy to understand.
